@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arcade Texas Hold'em</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+        :root {
+            --bg-color: #000000;
+            --table-color: #006400; /* Dark green felt */
+            --border-color: #555555;
+            --text-color: #00FF00; /* Neon green */
+            --player-name-color: #FFFF00; /* Neon yellow */
+            --card-back-color: #8B0000; /* Dark Red */
+            --card-front-bg: #FFFFFF;
+            --card-suit-red: #FF0000;
+            --card-suit-black: #000000;
+            --chip-color: #0000AA; /* Blue chips */
+            --button-bg: #333333;
+            --button-hover-bg: #555555;
+        }
+
+        body {
+            font-family: 'Press Start 2P', cursive;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            overflow: hidden; /* Hide scrollbars if table is larger than viewport */
+            font-size: 14px;
+            text-shadow: 1px 1px 2px rgba(0,255,0,0.5); /* Glow effect */
+        }
+
+        #game-container {
+            border: 5px solid var(--border-color);
+            box-shadow: 0 0 20px rgba(0,255,0,0.5);
+            padding: 20px;
+            border-radius: 15px;
+            background-color: #1a1a1a;
+            position: relative;
+            max-width: 1200px;
+            width: 95%;
+            aspect-ratio: 16/9; /* Maintain aspect ratio */
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #table-area {
+            background-color: var(--table-color);
+            border: 8px solid var(--border-color);
+            border-radius: 50%; /* Oval shape */
+            width: 80%;
+            height: 60%;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        #community-cards {
+            display: flex;
+            gap: 10px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .card {
+            width: 50px;
+            height: 70px;
+            background-color: var(--card-front-bg);
+            border: 2px solid var(--card-suit-black);
+            border-radius: 5px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            padding: 3px;
+            font-size: 1.2em;
+            font-weight: bold;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+            position: relative;
+        }
+
+        .card.facedown {
+            background-color: var(--card-back-color);
+            border: 2px solid var(--card-front-bg);
+            color: var(--card-front-bg);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5em;
+        }
+
+        .card.facedown::before {
+            content: '♦'; /* Simple pattern for card back */
+            font-size: 2em;
+            color: rgba(255,255,255,0.7);
+            transform: rotate(45deg);
+        }
+
+        .card .rank, .card .suit {
+            line-height: 1;
+        }
+
+        .card .suit.red { color: var(--card-suit-red); }
+        .card .suit.black { color: var(--card-suit-black); }
+
+        #pot-display {
+            position: absolute;
+            top: 20px;
+            font-size: 1.2em;
+            background-color: rgba(0,0,0,0.7);
+            padding: 5px 10px;
+            border-radius: 5px;
+            border: 1px solid var(--text-color);
+        }
+
+        .player-area {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            background-color: rgba(0,0,0,0.6);
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--player-name-color);
+            box-shadow: 0 0 10px rgba(255,255,0,0.5);
+        }
+
+        .player-area.player-you { bottom: 0; left: 50%; transform: translateX(-50%); }
+        .player-area.opponent-left { top: 20%; left: 5%; }
+        .player-area.opponent-top-left { top: 0; left: 25%; }
+        .player-area.opponent-top-right { top: 0; right: 25%; }
+        .player-area.opponent-right { top: 20%; right: 5%; }
+
+        .player-name {
+            color: var(--player-name-color);
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+
+        .player-stack, .player-bet {
+            font-size: 0.9em;
+            color: var(--text-color);
+        }
+
+        .hand-cards {
+            display: flex;
+            gap: 5px;
+            margin-top: 5px;
+        }
+
+        #controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            background-color: rgba(0,0,0,0.7);
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: 1px solid var(--text-color);
+            box-shadow: 0 0 15px rgba(0,255,0,0.5);
+        }
+
+        #controls button, #controls input {
+            font-family: 'Press Start 2P', cursive;
+            font-size: 1em;
+            padding: 8px 15px;
+            border-radius: 5px;
+            border: 2px solid var(--text-color);
+            background-color: var(--button-bg);
+            color: var(--text-color);
+            cursor: pointer;
+            transition: background-color 0.2s, color 0.2s, box-shadow 0.2s;
+            box-shadow: 0 0 5px rgba(0,255,0,0.3);
+        }
+
+        #controls button:hover {
+            background-color: var(--button-hover-bg);
+            color: var(--player-name-color);
+            box-shadow: 0 0 10px rgba(0,255,0,0.7);
+        }
+
+        #controls input[type="number"] {
+            width: 80px;
+            text-align: center;
+            background-color: #222;
+            color: var(--text-color);
+            border: 2px solid var(--text-color);
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="table-area">
+            <div id="pot-display">Pot: $0</div>
+            <div id="community-cards">
+                </div>
+
+            <div id="player-opponent-1" class="player-area opponent-top-left">
+                <div class="player-name">Player 1</div>
+                <div class="hand-cards">
+                    <div class="card facedown"></div>
+                    <div class="card facedown"></div>
+                </div>
+                <div class="player-stack">Stack: $1000</div>
+                <div class="player-bet">Bet: $0</div>
+            </div>
+
+            <div id="player-opponent-2" class="player-area opponent-top-right">
+                <div class="player-name">Player 2</div>
+                <div class="hand-cards">
+                    <div class="card facedown"></div>
+                    <div class="card facedown"></div>
+                </div>
+                <div class="player-stack">Stack: $1000</div>
+                <div class="player-bet">Bet: $0</div>
+            </div>
+
+            <div id="player-opponent-3" class="player-area opponent-right">
+                <div class="player-name">Player 3</div>
+                <div class="hand-cards">
+                    <div class="card facedown"></div>
+                    <div class="card facedown"></div>
+                </div>
+                <div class="player-stack">Stack: $1000</div>
+                <div class="player-bet">Bet: $0</div>
+            </div>
+
+            <div id="player-opponent-4" class="player-area opponent-left">
+                <div class="player-name">Player 4</div>
+                <div class="hand-cards">
+                    <div class="card facedown"></div>
+                    <div class="card facedown"></div>
+                </div>
+                <div class="player-stack">Stack: $1000</div>
+                <div class="player-bet">Bet: $0</div>
+            </div>
+
+
+            <div id="player-you" class="player-area player-you">
+                <div class="player-name">YOU</div>
+                <div class="hand-cards">
+                    </div>
+                <div class="player-stack">Stack: $1000</div>
+                <div class="player-bet">Bet: $0</div>
+            </div>
+
+        </div>
+
+        <div id="controls">
+            <input type="number" id="bet-amount" value="50" min="0">
+            <button id="fold-btn">FOLD</button>
+            <button id="check-call-btn">CHECK / CALL</button>
+            <button id="raise-btn">RAISE</button>
+        </div>
+    </div>
+
+    <script>
+        // --- GAME DATA ---
+        const suits = ['Hearts', 'Diamonds', 'Clubs', 'Spades'];
+        const ranks = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
+
+        let deck = [];
+        let players = [];
+        let communityCards = [];
+        let pot = 0;
+        let dealerButton = 0; // Index of the player with the dealer button
+        let currentPlayerIndex = 0; // Index of the player whose turn it is
+
+        // --- DOM ELEMENTS ---
+        const gameContainer = document.getElementById('game-container');
+        const communityCardsDiv = document.getElementById('community-cards');
+        const potDisplay = document.getElementById('pot-display');
+        const playerYouDiv = document.getElementById('player-you');
+        const controlsDiv = document.getElementById('controls');
+        const betAmountInput = document.getElementById('bet-amount');
+        const foldBtn = document.getElementById('fold-btn');
+        const checkCallBtn = document.getElementById('check-call-btn');
+        const raiseBtn = document.getElementById('raise-btn');
+
+        // --- CARD UTILITIES ---
+        function getCardHTML(card, facedown = false) {
+            if (facedown) {
+                return `<div class="card facedown"></div>`;
+            }
+            const suitChar = {
+                'Hearts': '&hearts;', 'Diamonds': '&diams;',
+                'Clubs': '&clubs;', 'Spades': '&spades;'
+            }[card.suit];
+            const suitColor = (card.suit === 'Hearts' || card.suit === 'Diamonds') ? 'red' : 'black';
+            return `
+                <div class="card">
+                    <div class="rank ${suitColor}">${card.rank}</div>
+                    <div class="suit ${suitColor}">${suitChar}</div>
+                </div>
+            `;
+        }
+
+        // --- GAME LOGIC ---
+
+        function createDeck() {
+            deck = [];
+            for (const suit of suits) {
+                for (const rank of ranks) {
+                    deck.push({ rank, suit });
+                }
+            }
+        }
+
+        function shuffleDeck() {
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]]; // ES6 swap
+            }
+        }
+
+        function initializePlayers() {
+            players = [
+                { id: 'player-you', name: 'YOU', stack: 1000, hand: [], bet: 0, status: 'active', isPlayer: true, element: playerYouDiv },
+                { id: 'player-opponent-1', name: 'Player 1', stack: 1000, hand: [], bet: 0, status: 'active', isPlayer: false, element: document.getElementById('player-opponent-1') },
+                { id: 'player-opponent-2', name: 'Player 2', stack: 1000, hand: [], bet: 0, status: 'active', isPlayer: false, element: document.getElementById('player-opponent-2') },
+                { id: 'player-opponent-3', name: 'Player 3', stack: 1000, hand: [], bet: 0, status: 'active', isPlayer: false, element: document.getElementById('player-opponent-3') },
+                { id: 'player-opponent-4', name: 'Player 4', stack: 1000, hand: [], bet: 0, status: 'active', isPlayer: false, element: document.getElementById('player-opponent-4') },
+            ];
+        }
+
+        function dealHands() {
+            // Clear previous hands
+            players.forEach(player => player.hand = []);
+            communityCards = [];
+
+            // Deal two cards to each active player
+            for (let i = 0; i < 2; i++) {
+                for (const player of players) {
+                    if (player.status === 'active') { // Only deal to active players
+                        player.hand.push(deck.pop());
+                    }
+                }
+            }
+        }
+
+        function updateUI() {
+            // Update Pot
+            potDisplay.textContent = `Pot: $${pot}`;
+
+            // Update Community Cards
+            communityCardsDiv.innerHTML = communityCards.map(card => getCardHTML(card)).join('');
+
+            // Update Players
+            players.forEach(player => {
+                const handCardsDiv = player.element.querySelector('.hand-cards');
+                const stackDiv = player.element.querySelector('.player-stack');
+                const betDiv = player.element.querySelector('.player-bet');
+
+                if (player.isPlayer) {
+                    // Show player's own cards
+                    handCardsDiv.innerHTML = player.hand.map(card => getCardHTML(card)).join('');
+                } else {
+                    // Opponent cards are facedown unless revealed
+                    handCardsDiv.innerHTML = player.hand.map(() => getCardHTML(null, true)).join('');
+                }
+
+                stackDiv.textContent = `Stack: $${player.stack}`;
+                betDiv.textContent = `Bet: $${player.bet}`;
+
+                // Highlight current player (basic implementation)
+                if (players[currentPlayerIndex] === player) {
+                    player.element.style.borderColor = 'cyan';
+                    player.element.style.boxShadow = '0 0 15px rgba(0,255,255,0.7)';
+                } else {
+                    player.element.style.borderColor = 'var(--player-name-color)';
+                    player.element.style.boxShadow = '0 0 10px rgba(255,255,0,0.5)';
+                }
+            });
+        }
+
+        function startGame() {
+            createDeck();
+            shuffleDeck();
+            initializePlayers();
+            dealHands();
+            pot = 0; // Reset pot for a new game
+            currentPlayerIndex = (dealerButton + 3) % players.length; // Small blind + Big Blind
+
+            updateUI();
+            console.log("Game Started! Players:", players);
+            console.log("Deck size:", deck.length);
+        }
+
+        // --- EVENT LISTENERS (placeholder for now) ---
+        foldBtn.addEventListener('click', () => {
+            console.log("Fold button clicked!");
+            // Implement fold logic here
+        });
+
+        checkCallBtn.addEventListener('click', () => {
+            console.log("Check/Call button clicked!");
+            // Implement check/call logic here
+        });
+
+        raiseBtn.addEventListener('click', () => {
+            const amount = parseInt(betAmountInput.value);
+            console.log(`Raise button clicked! Amount: ${amount}`);
+            // Implement raise logic here
+        });
+
+        // --- INITIAL GAME START ---
+        startGame();
+
+        // Example: Deal a flop after 3 seconds for demonstration
+        setTimeout(() => {
+            console.log("Dealing flop...");
+            communityCards.push(deck.pop(), deck.pop(), deck.pop());
+            updateUI();
+        }, 3000);
+
+        // Example: Deal a turn after 6 seconds
+        setTimeout(() => {
+            console.log("Dealing turn...");
+            communityCards.push(deck.pop());
+            updateUI();
+        }, 6000);
+
+         // Example: Deal a river after 9 seconds
+         setTimeout(() => {
+            console.log("Dealing river...");
+            communityCards.push(deck.pop());
+            updateUI();
+        }, 9000);
+
+    </script>
+</body>
+</html>
